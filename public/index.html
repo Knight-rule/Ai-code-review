@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Code Review Tool</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg-primary: #1e1e1e;
+      --bg-secondary: #252526;
+      --bg-tertiary: #2d2d2d;
+      --bg-hover: #3e3e3e;
+      --text-primary: #d4d4d4;
+      --text-secondary: #808080;
+      --text-muted: #606060;
+      --accent: #007acc;
+      --accent-hover: #1a8ad4;
+      --border: #3e3e3e;
+      --error: #f44747;
+      --warning: #cca700;
+      --info: #3794ff;
+      --success: #6a9955;
+      --scrollbar-bg: #1e1e1e;
+      --scrollbar-thumb: #424242;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--scrollbar-bg);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--scrollbar-thumb);
+      border-radius: 5px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #555;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 20px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      height: 50px;
+    }
+
+    .header h1 {
+      font-size: 16px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .header h1 svg {
+      width: 24px;
+      height: 24px;
+      fill: var(--accent);
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    /* Language Selector */
+    .language-select {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 13px;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .language-select:hover {
+      border-color: var(--accent);
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-hover);
+    }
+
+    /* Main Container */
+    .main-container {
+      display: flex;
+      height: calc(100vh - 50px);
+    }
+
+    /* Editor Panel */
+    .editor-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border);
+      min-width: 0;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 16px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .editor-wrapper {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .line-numbers {
+      background: var(--bg-secondary);
+      padding: 12px 8px;
+      text-align: right;
+      color: var(--text-muted);
+      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      user-select: none;
+      overflow: hidden;
+      min-width: 50px;
+      border-right: 1px solid var(--border);
+    }
+
+    .code-editor {
+      flex: 1;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      border: none;
+      padding: 12px;
+      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      resize: none;
+      outline: none;
+      tab-size: 2;
+      overflow: auto;
+    }
+
+    .code-editor::placeholder {
+      color: var(--text-muted);
+    }
+
+    /* Results Panel */
+    .results-panel {
+      width: 45%;
+      min-width: 350px;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-secondary);
+    }
+
+    .results-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 16px;
+      background: var(--bg-tertiary);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .tab {
+      padding: 6px 12px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .tab:hover {
+      color: var(--text-primary);
+    }
+
+    .tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    .results-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+    }
+
+    /* Score Card */
+    .score-card {
+      background: var(--bg-tertiary);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    .score-gauge {
+      position: relative;
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 16px;
+    }
+
+    .score-gauge svg {
+      transform: rotate(-90deg);
+    }
+
+    .score-gauge circle {
+      fill: none;
+      stroke-width: 8;
+    }
+
+    .score-gauge .bg {
+      stroke: var(--bg-primary);
+    }
+
+    .score-gauge .progress {
+      stroke-dasharray: 339.292;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 0.5s ease;
+    }
+
+    .score-value {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 32px;
+      font-weight: 600;
+    }
+
+    .score-label {
+      color: var(--text-secondary);
+      font-size: 12px;
+      margin-top: 8px;
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .stat-item {
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    /* Issues List */
+    .issues-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .issue-item {
+      background: var(--bg-tertiary);
+      border-radius: 6px;
+      padding: 12px;
+      border-left: 3px solid;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .issue-item:hover {
+      background: var(--bg-hover);
+    }
+
+    .issue-item.error {
+      border-left-color: var(--error);
+    }
+
+    .issue-item.warning {
+      border-left-color: var(--warning);
+    }
+
+    .issue-item.info {
+      border-left-color: var(--info);
+    }
+
+    .issue-item.success {
+      border-left-color: var(--success);
+    }
+
+    .issue-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .issue-badge {
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .issue-badge.error {
+      background: rgba(244, 71, 71, 0.2);
+      color: var(--error);
+    }
+
+    .issue-badge.warning {
+      background: rgba(204, 167, 0, 0.2);
+      color: var(--warning);
+    }
+
+    .issue-badge.info {
+      background: rgba(55, 148, 255, 0.2);
+      color: var(--info);
+    }
+
+    .issue-badge.success {
+      background: rgba(106, 153, 85, 0.2);
+      color: var(--success);
+    }
+
+    .issue-type {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .issue-message {
+      font-size: 13px;
+      color: var(--text-primary);
+      line-height: 1.4;
+    }
+
+    .issue-line {
+      font-size: 11px;
+      color: var(--accent);
+      margin-top: 4px;
+    }
+
+    /* History Panel */
+    .history-panel {
+      display: none;
+    }
+
+    .history-panel.active {
+      display: block;
+    }
+
+    .history-item {
+      background: var(--bg-tertiary);
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .history-item:hover {
+      background: var(--bg-hover);
+    }
+
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .history-lang {
+      font-size: 12px;
+      padding: 2px 8px;
+      background: var(--accent);
+      color: white;
+      border-radius: 3px;
+    }
+
+    .history-time {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .history-score {
+      font-size: 20px;
+      font-weight: 600;
+    }
+
+    .history-stats {
+      display: flex;
+      gap: 12px;
+      margin-top: 8px;
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-secondary);
+    }
+
+    .empty-state svg {
+      width: 64px;
+      height: 64px;
+      fill: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .empty-state h3 {
+      font-size: 14px;
+      margin-bottom: 8px;
+      color: var(--text-primary);
+    }
+
+    .empty-state p {
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    /* Loading State */
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 40px 20px;
+    }
+
+    .loading.active {
+      display: block;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    /* Filter Tabs */
+    .filter-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .filter-tab {
+      padding: 4px 10px;
+      font-size: 11px;
+      border-radius: 3px;
+      cursor: pointer;
+      background: var(--bg-tertiary);
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+      transition: all 0.2s;
+    }
+
+    .filter-tab:hover {
+      background: var(--bg-hover);
+    }
+
+    .filter-tab.active {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    .filter-count {
+      margin-left: 4px;
+      opacity: 0.7;
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .main-container {
+        flex-direction: column;
+      }
+
+      .editor-panel {
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+        height: 50%;
+      }
+
+      .results-panel {
+        width: 100%;
+        min-width: unset;
+        height: 50%;
+      }
+    }
+
+    /* Category Tags */
+    .category-tag {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      margin-left: 6px;
+      background: var(--bg-primary);
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <h1>
+      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+      AI Code Review
+    </h1>
+    <div class="header-actions">
+      <select id="languageSelect" class="language-select">
+        <option value="javascript">JavaScript</option>
+        <option value="python">Python</option>
+        <option value="java">Java</option>
+        <option value="cpp">C++</option>
+        <option value="go">Go</option>
+        <option value="rust">Rust</option>
+      </select>
+      <button id="analyzeBtn" class="btn btn-primary" onclick="analyzeCode()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+        Analyze
+      </button>
+      <button id="historyBtn" class="btn btn-secondary" onclick="toggleHistory()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
+        History
+      </button>
+    </div>
+  </header>
+
+  <main class="main-container">
+    <!-- Editor Panel -->
+    <section class="editor-panel">
+      <div class="panel-header">
+        <span>Code Editor</span>
+        <span id="editorInfo">0 lines | 0 chars</span>
+      </div>
+      <div class="editor-wrapper">
+        <div id="lineNumbers" class="line-numbers">1</div>
+        <textarea id="codeEditor" class="code-editor" placeholder="Paste your code here or write something...&#10;&#10;Select a language and click Analyze to review your code." spellcheck="false"></textarea>
+      </div>
+    </section>
+
+    <!-- Results Panel -->
+    <section class="results-panel">
+      <div class="results-header">
+        <div class="tab active" data-tab="results" onclick="switchTab('results')">Results</div>
+        <div class="tab" data-tab="history" onclick="switchTab('history')">History</div>
+      </div>
+
+      <div id="resultsContent" class="results-content">
+        <!-- Results Tab -->
+        <div id="resultsTab">
+          <div id="emptyState" class="empty-state">
+            <svg viewBox="0 0 24 24"><path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/></svg>
+            <h3>No Analysis Yet</h3>
+            <p>Paste your code in the editor and click Analyze to get AI-powered code review suggestions.</p>
+          </div>
+
+          <div id="loadingState" class="loading">
+            <div class="spinner"></div>
+            <div class="loading-text">Analyzing your code...</div>
+          </div>
+
+          <div id="resultsView" style="display: none;">
+            <!-- Score Card -->
+            <div class="score-card">
+              <div class="score-gauge">
+                <svg width="120" height="120">
+                  <circle class="bg" cx="60" cy="60" r="54"></circle>
+                  <circle id="scoreCircle" class="progress" cx="60" cy="60" r="54"></circle>
+                </svg>
+                <div id="scoreValue" class="score-value">0</div>
+              </div>
+              <div class="score-label">Code Quality Score</div>
+              <div class="stats-grid">
+                <div class="stat-item">
+                  <div id="statLines" class="stat-value">0</div>
+                  <div class="stat-label">Lines</div>
+                </div>
+                <div class="stat-item">
+                  <div id="statFunctions" class="stat-value">0</div>
+                  <div class="stat-label">Functions</div>
+                </div>
+                <div class="stat-item">
+                  <div id="statComments" class="stat-value">0%</div>
+                  <div class="stat-label">Comments</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="filter-tabs">
+              <div class="filter-tab active" data-filter="all" onclick="filterIssues('all')">
+                All<span class="filter-count" id="countAll">0</span>
+              </div>
+              <div class="filter-tab" data-filter="error" onclick="filterIssues('error')">
+                Errors<span class="filter-count" id="countError">0</span>
+              </div>
+              <div class="filter-tab" data-filter="warning" onclick="filterIssues('warning')">
+                Warnings<span class="filter-count" id="countWarning">0</span>
+              </div>
+              <div class="filter-tab" data-filter="info" onclick="filterIssues('info')">
+                Info<span class="filter-count" id="countInfo">0</span>
+              </div>
+            </div>
+
+            <!-- Issues List -->
+            <div id="issuesList" class="issues-list"></div>
+          </div>
+        </div>
+
+        <!-- History Tab -->
+        <div id="historyTab" class="history-panel">
+          <div id="historyList"></div>
+          <div id="historyEmpty" class="empty-state">
+            <svg viewBox="0 0 24 24"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
+            <h3>No History Yet</h3>
+            <p>Your analyzed code will appear here.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // State
+    let currentResults = null;
+    let currentFilter = 'all';
+    let history = JSON.parse(localStorage.getItem('codeReviewHistory') || '[]');
+
+    // Editor functionality
+    const editor = document.getElementById('codeEditor');
+    const lineNumbers = document.getElementById('lineNumbers');
+    const editorInfo = document.getElementById('editorInfo');
+
+    editor.addEventListener('input', updateLineNumbers);
+    editor.addEventListener('scroll', syncScroll);
+    editor.addEventListener('keydown', handleTab);
+
+    function updateLineNumbers() {
+      const lines = editor.value.split('\n').length;
+      lineNumbers.innerHTML = Array.from({ length: lines }, (_, i) => i + 1).join('<br>');
+      editorInfo.textContent = `${lines} lines | ${editor.value.length} chars`;
+    }
+
+    function syncScroll() {
+      lineNumbers.scrollTop = editor.scrollTop;
+    }
+
+    function handleTab(e) {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const start = editor.selectionStart;
+        const end = editor.selectionEnd;
+        editor.value = editor.value.substring(0, start) + '  ' + editor.value.substring(end);
+        editor.selectionStart = editor.selectionEnd = start + 2;
+        updateLineNumbers();
+      }
+    }
+
+    // Tab switching
+    function switchTab(tab) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+      
+      document.getElementById('resultsTab').style.display = tab === 'results' ? 'block' : 'none';
+      document.getElementById('historyTab').classList.toggle('active', tab === 'history');
+      
+      if (tab === 'history') {
+        renderHistory();
+      }
+    }
+
+    // Analysis
+    async function analyzeCode() {
+      const code = editor.value.trim();
+      const language = document.getElementById('languageSelect').value;
+
+      if (!code) {
+        alert('Please enter some code to analyze.');
+        return;
+      }
+
+      const analyzeBtn = document.getElementById('analyzeBtn');
+      analyzeBtn.disabled = true;
+
+      document.getElementById('emptyState').style.display = 'none';
+      document.getElementById('resultsView').style.display = 'none';
+      document.getElementById('loadingState').classList.add('active');
+
+      try {
+        const response = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code, language })
+        });
+
+        const result = await response.json();
+        currentResults = result;
+        
+        // Save to history
+        saveToHistory(code, language, result);
+        
+        renderResults(result);
+      } catch (error) {
+        console.error('Analysis failed:', error);
+        alert('Analysis failed. Please try again.');
+      } finally {
+        analyzeBtn.disabled = false;
+        document.getElementById('loadingState').classList.remove('active');
+      }
+    }
+
+    function renderResults(result) {
+      document.getElementById('resultsView').style.display = 'block';
+      
+      // Update score
+      const score = result.score;
+      const scoreCircle = document.getElementById('scoreCircle');
+      const circumference = 2 * Math.PI * 54;
+      const offset = circumference - (score / 100) * circumference;
+      
+      scoreCircle.style.strokeDasharray = circumference;
+      scoreCircle.style.strokeDashoffset = offset;
+      
+      let scoreColor;
+      if (score >= 80) scoreColor = '#6a9955';
+      else if (score >= 60) scoreColor = '#cca700';
+      else if (score >= 40) scoreColor = '#ce9178';
+      else scoreColor = '#f44747';
+      
+      scoreCircle.style.stroke = scoreColor;
+      document.getElementById('scoreValue').textContent = score;
+      document.getElementById('scoreValue').style.color = scoreColor;
+      
+      // Update stats
+      document.getElementById('statLines').textContent = result.stats.codeLines || 0;
+      document.getElementById('statFunctions').textContent = result.stats.functions || 0;
+      document.getElementById('statComments').textContent = (result.stats.commentRatio || 0) + '%';
+      
+      // Update counts
+      const issues = result.issues || [];
+      document.getElementById('countAll').textContent = issues.length;
+      document.getElementById('countError').textContent = issues.filter(i => i.severity === 'error').length;
+      document.getElementById('countWarning').textContent = issues.filter(i => i.severity === 'warning').length;
+      document.getElementById('countInfo').textContent = issues.filter(i => i.severity === 'info').length;
+      
+      // Reset filter
+      currentFilter = 'all';
+      document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+      document.querySelector('[data-filter="all"]').classList.add('active');
+      
+      // Render issues
+      renderIssues(issues);
+    }
+
+    function renderIssues(issues) {
+      const container = document.getElementById('issuesList');
+      
+      if (issues.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+            <h3>No Issues Found!</h3>
+            <p>Your code looks great. No issues were detected.</p>
+          </div>
+        `;
+        return;
+      }
+
+      const filtered = currentFilter === 'all' 
+        ? issues 
+        : issues.filter(i => i.severity === currentFilter);
+      
+      container.innerHTML = filtered.map(issue => `
+        <div class="issue-item ${issue.severity}" onclick="goToLine(${issue.line})">
+          <div class="issue-header">
+            <span class="issue-badge ${issue.severity}">${issue.severity}</span>
+            <span class="issue-type">${formatType(issue.type)}</span>
+            <span class="category-tag">${issue.category}</span>
+          </div>
+          <div class="issue-message">${escapeHtml(issue.message)}</div>
+          <div class="issue-line">Line ${issue.line}</div>
+        </div>
+      `).join('');
+    }
+
+    function formatType(type) {
+      return type.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    function filterIssues(filter) {
+      currentFilter = filter;
+      document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+      document.querySelector(`[data-filter="${filter}"]`).classList.add('active');
+      
+      if (currentResults) {
+        renderIssues(currentResults.issues);
+      }
+    }
+
+    function goToLine(lineNum) {
+      const lines = editor.value.split('\n');
+      let pos = 0;
+      for (let i = 0; i < lineNum - 1 && i < lines.length; i++) {
+        pos += lines[i].length + 1;
+      }
+      
+      editor.focus();
+      editor.setSelectionRange(pos, pos + (lines[lineNum - 1]?.length || 0));
+      
+      // Scroll to line
+      const lineHeight = 19.5; // Approximate line height
+      editor.scrollTop = (lineNum - 5) * lineHeight;
+    }
+
+    // History
+    function saveToHistory(code, language, result) {
+      const entry = {
+        id: Date.now(),
+        code: code.substring(0, 500), // Store first 500 chars
+        language,
+        score: result.score,
+        stats: result.stats,
+        issuesCount: result.issues.length,
+        timestamp: new Date().toISOString()
+      };
+      
+      history.unshift(entry);
+      if (history.length > 20) history.pop();
+      
+      localStorage.setItem('codeReviewHistory', JSON.stringify(history));
+    }
+
+    function renderHistory() {
+      const container = document.getElementById('historyList');
+      const emptyState = document.getElementById('historyEmpty');
+      
+      if (history.length === 0) {
+        container.innerHTML = '';
+        emptyState.style.display = 'block';
+        return;
+      }
+      
+      emptyState.style.display = 'none';
+      
+      container.innerHTML = history.map(entry => `
+        <div class="history-item" onclick="loadFromHistory('${entry.id}')">
+          <div class="history-header">
+            <span class="history-lang">${entry.language}</span>
+            <span class="history-time">${formatTime(entry.timestamp)}</span>
+          </div>
+          <div class="history-score" style="color: ${getScoreColor(entry.score)}">${entry.score}</div>
+          <div class="history-stats">
+            <span>${entry.stats.codeLines || 0} lines</span>
+            <span>${entry.stats.functions || 0} functions</span>
+            <span>${entry.issuesCount} issues</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function formatTime(timestamp) {
+      const date = new Date(timestamp);
+      const now = new Date();
+      const diff = now - date;
+      
+      if (diff < 60000) return 'Just now';
+      if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
+      if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
+      return date.toLocaleDateString();
+    }
+
+    function getScoreColor(score) {
+      if (score >= 80) return '#6a9955';
+      if (score >= 60) return '#cca700';
+      if (score >= 40) return '#ce9178';
+      return '#f44747';
+    }
+
+    function loadFromHistory(id) {
+      const entry = history.find(h => h.id === parseInt(id));
+      if (entry) {
+        document.getElementById('languageSelect').value = entry.language;
+        switchTab('results');
+      }
+    }
+
+    function toggleHistory() {
+      switchTab('history');
+    }
+
+    // Initialize
+    updateLineNumbers();
+    
+    // Sample code
+    const sampleCode = `// Try analyzing this code!
+function calculateTotal(items) {
+  var total = 0;
+  for (var i = 0; i <= items.length; i++) {
+    total += items[i].price;
+  }
+  return total;
+}
+
+const result = eval("2 + 2");
+const query = "SELECT * FROM users WHERE id=" + userId;
+const password = "secret123";
+
+console.log("Total:", result);`;
+
+    editor.value = sampleCode;
+    updateLineNumbers();
+  </script>
+</body>
+</html>
